@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MILFER — Control de finanzas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container">
+      <h1>MILFER</h1>
+      <nav>
+        <button id="btnHome">Inicio</button>
+        <button id="btnForm">Registrar</button>
+        <button id="btnDashboard">Dashboard</button>
+        <button id="btnHist">Historial</button>
+        <button id="btnAjustes">Ajustes</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- HOME -->
+    <section id="homeView" class="card">
+      <h2 id="saludo">¡Hola! Bienvenido a MILFER</h2>
+      <p>Registra tus gastos e ingresos y visualiza tu resumen.</p>
+    </section>
+
+    <!-- FORM -->
+    
+      <section id="formView" class="card hidden">
+        <h2>Registrar movimiento</h2>
+        <form id="movForm">
+          <div class="row"><label>Monto</label><input type="number" id="monto" required /></div>
+          <div class="row"><label>Detalle</label><input type="text" id="detalle" required /></div>
+          <div class="row"><label>Donde</label><input type="text" id="donde" /></div>
+          <div class="row"><label>Fecha de pago</label><input type="date" id="fechaPago" /></div>
+          <div class="row"><label>Tipo</label>
+            <select id="tipo">
+              <option value="Gasto">Gasto</option>
+              <option value="Ingreso">Ingreso</option>
+            </select>
+          </div>
+          <div class="row"><label>Categoria</label>
+            <select id="categoria">
+              <option value="Sin categoría">Sin categoría</option>
+              <option value="Comida">Comida</option>
+              <option value="Transporte">Transporte</option>
+            </select>
+          </div>
+          <div class="actions"><button type="submit">Guardar</button></div>
+          <p id="formMsg"></p>
+        </form>
+      </section>
+
+
+    <!-- DASHBOARD -->
+    <section id="dashView" class="card hidden">
+      <h2>Dashboard</h2>
+      <div class="grid">
+        <div class="chartCard">
+          <canvas id="pieChart"></canvas>
+        </div>
+        <div class="chartCard">
+          <canvas id="lineChart"></canvas>
+        </div>
+      </div>
+      <div class="summary" id="summaryBox"></div>
+    </section>
+
+    <!-- HISTORIAL -->
+    <section id="histView" class="card hidden">
+      <h2>Historial</h2>
+      <input id="search" placeholder="Buscar detalle, donde, categoría..." />
+      <table id="histTable">
+        <thead><tr><th>FechaReg</th><th>Monto</th><th>Detalle</th><th>Donde</th><th>FechaPago</th><th>Tipo</th><th>Categoria</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- AJUSTES -->
+    <section id="ajustesView" class="card hidden">
+      <h2>Ajustes y alertas</h2>
+      <div class="row">
+        <label>Límite de alerta por categoría (S/)</label>
+        <input id="alertCategory" placeholder="ej. Comida:50,Transporte:30" />
+        <small class="muted">Formato: Categoria:Valor. Varias separadas por coma.</small>
+      </div>
+      <div class="actions">
+        <button id="saveAlerts">Guardar alertas</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="container">MILFER · Control de finanzas</div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

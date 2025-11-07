@@ -1,0 +1,153 @@
+// app.js - sitio MILFER
+const API_URL = "https://script.google.com/macros/s/AKfycbzPuAjUG8GZ3998tHeoFfUpFQvhXrKPfrSqsR_JXz8qT14Un5KRtCQ6hF9J_9Nwvpih/exec";
+
+const $ = id => document.getElementById(id);
+const views = { home: $('homeView'), form: $('formView'), dash: $('dashView'), hist: $('histView'), ajustes: $('ajustesView') };
+
+// navegación
+document.getElementById('btnHome').addEventListener('click', ()=>show('home'));
+document.getElementById('btnForm').addEventListener('click', ()=>show('form'));
+document.getElementById('btnDashboard').addEventListener('click', ()=>show('dash'));
+document.getElementById('btnHist').addEventListener('click', ()=>show('hist'));
+document.getElementById('btnAjustes').addEventListener('click', ()=>show('ajustes'));
+
+function show(v){
+  for(const k in views) views[k].classList.add('hidden');
+  if(v==='form') views.form.classList.remove('hidden');
+  if(v==='dash') { views.dash.classList.remove('hidden'); renderDashboard(); }
+  if(v==='hist') { views.hist.classList.remove('hidden'); renderHist(); }
+  if(v==='ajustes') views.ajustes.classList.remove('hidden');
+  if(v==='home') views.home.classList.remove('hidden');
+}
+
+// guardado del formulario
+document.getElementById('movForm').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const payload = {
+    monto: document.getElementById('monto').value,
+    detalle: document.getElementById('detalle').value,
+    donde: document.getElementById('donde').value,
+    fechaPago: document.getElementById('fechaPago').value,
+    tipo: document.getElementById('tipo').value,
+    categoria: document.getElementById('categoria').value,
+    medio: "",
+    nota: ""
+  };
+  document.getElementById('formMsg').textContent = 'Guardando...';
+  try {
+    const res = await fetch(API_URL, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const json = await res.json();
+    if(json.status === 'ok' || json === 'OK' || json.status === undefined) {
+      document.getElementById('formMsg').textContent = 'Registrado correctamente ✅';
+      document.getElementById('movForm').reset();
+      setTimeout(()=>{ document.getElementById('formMsg').textContent=''; },2000);
+    } else {
+      document.getElementById('formMsg').textContent = 'Error guardando: ' + (json.message||JSON.stringify(json));
+    }
+  } catch(err){ document.getElementById('formMsg').textContent = 'Error de red: ' + err.message; }
+});
+
+// obtener todos los movimientos
+async function fetchMovs(){
+  try {
+    const res = await fetch(API_URL);
+    const j = await res.json();
+    if(j.status && j.status==='ok') return j.rows || [];
+    return j.rows || [];
+  } catch(err){ console.error(err); return []; }
+}
+
+// Render historial
+async function renderHist(){
+  const rows = await fetchMovs();
+  const tbody = document.querySelector('#histTable tbody');
+  tbody.innerHTML = '';
+  (rows || []).slice().reverse().forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r["FechaRegistro"]||r["Timestamp"]||r["Fecha registro"]||r[0]||''}</td>\n                    <td>${r["Monto"]||r["monto"]||r[1]||''}</td>\n                    <td>${r["Detalle"]||r["detalle"]||r[2]||''}</td>\n                    <td>${r["Donde"]||r["donde"]||r[3]||''}</td>\n                    <td>${r["FechaPago"]||r["fechaPago"]||r[4]||''}</td>\n                    <td>${r["Tipo"]||r["tipo"]||r[5]||''}</td>\n                    <td>${r["Categoria"]||r["categoria"]||r[6]||''}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Dashboard (gráficos)
+let pieChart=null, lineChart=null;
+async function renderDashboard(){
+  const rows = await fetchMovs();
+  if(!rows || rows.length===0){ document.getElementById('summaryBox').innerHTML='<p class="muted">No hay datos aún</p>'; return; }
+
+  const items = (rows || []).map(r => {
+    let fechaReg = new Date(r["FechaRegistro"]||r["Timestamp"]||r["Fecha registro"]||r[0]||'');
+    const monto = parseFloat(r["Monto"]||r["monto"]||r[1]||0) || 0;
+    const detalle = r["Detalle"]||r["detalle"]||r[2]||'';
+    const donde = r["Donde"]||r["donde"]||r[3]||'';
+    const fechaPago = r["FechaPago"]||r["fechaPago"]||r[4]||'';
+    const tipo = r["Tipo"]||r["tipo"]||r[5]||'Gasto';
+    const categoria = r["Categoria"]||r["categoria"]||r[6]||'Sin categoría';
+    return { fechaReg, monto, detalle, donde, fechaPago, tipo, categoria };
+  });
+
+  const catMap = {};
+  items.forEach(it=>{ const c = it.categoria || 'Sin categoría'; if(!(c in catMap)) catMap[c]=0; if(it.tipo.toLowerCase()==='gasto') catMap[c]+= Math.abs(it.monto||0); });
+  const labels = Object.keys(catMap);
+  const dataPie = Object.values(catMap);
+
+  const pieCtx = document.getElementById('pieChart').getContext('2d');
+  if(pieChart) pieChart.destroy();
+  pieChart = new Chart(pieCtx, { type: 'pie', data: { labels: labels, datasets: [{ data: dataPie, backgroundColor: labels.map((_,i)=>`hsl(${i*60 % 360} 70% 55%)`)}] }, options: { responsive:true } });
+
+  const monthMap = {};
+  items.forEach(it=>{
+    const d = it.fechaReg;
+    if(!(d instanceof Date) || isNaN(d)) return;
+    const mKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    monthMap[mKey] = (monthMap[mKey]||0) + (it.tipo.toLowerCase()==='gasto' ? -it.monto : it.monto);
+  });
+  const monthLabels = Object.keys(monthMap).sort();
+  const monthValues = monthLabels.map(k=>monthMap[k]);
+
+  const lineCtx = document.getElementById('lineChart').getContext('2d');
+  if(lineChart) lineChart.destroy();
+  lineChart = new Chart(lineCtx, { type: 'line', data: { labels: monthLabels, datasets: [{ label:'Balance por mes', data: monthValues, fill:false, tension:0.2 }] }, options: { responsive:true } });
+
+  const totalGastos = items.filter(i=>i.tipo.toLowerCase()==='gasto').reduce((s,i)=>s + (isNaN(i.monto)?0:i.monto),0);
+  const totalIngresos = items.filter(i=>i.tipo.toLowerCase()==='ingreso').reduce((s,i)=>s + (isNaN(i.monto)?0:i.monto),0);
+  const balance = totalIngresos - totalGastos;
+  document.getElementById('summaryBox').innerHTML = '<p>Total ingresos: S/ ' + totalIngresos.toFixed(2) + ' · Total gastos: S/ ' + totalGastos.toFixed(2) + ' · Balance: S/ ' + balance.toFixed(2) + '</p>';
+
+  checkAlerts(items);
+}
+
+function parseAlertsString(s){
+  const out = {};
+  if(!s) return out;
+  s.split(',').map(x=>x.trim()).filter(Boolean).forEach(pair=>{
+    const [cat, val] = pair.split(':').map(t=>t && t.trim());
+    if(cat && val) out[cat] = parseFloat(val);
+  });
+  return out;
+}
+
+document.getElementById('saveAlerts').addEventListener('click', ()=>{
+  const s = document.getElementById('alertCategory').value;
+  localStorage.setItem('milfer_alerts', s);
+  alert('Alertas guardadas');
+});
+
+function checkAlerts(items){
+  const s = localStorage.getItem('milfer_alerts') || '';
+  const rules = parseAlertsString(s);
+  const sums = {};
+  items.forEach(it=>{
+    if(it.tipo.toLowerCase()!=='gasto') return;
+    const c = it.categoria || 'Sin categoría';
+    sums[c] = (sums[c]||0) + (isNaN(it.monto)?0:it.monto);
+  });
+  for(const cat in rules){
+    if((sums[cat]||0) >= rules[cat]){
+      alert('ALERTA: Gastos en ' + cat + ' han alcanzado S/ ' + (sums[cat]||0).toFixed(2) + ' (límite ' + rules[cat] + ')');
+    }
+  }
+}
+
+show('home');
+setInterval(()=>{ if(!document.querySelector('#dashView').classList.contains('hidden')) renderDashboard(); }, 60000);
