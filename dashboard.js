@@ -1,5 +1,5 @@
 // dashboard.js (si prefieres archivo separado)
-const API_URL = "https://script.google.com/macros/s/AKfycbzPuAjUG8GZ3998tHeoFfUpFQvhXrKPfrSqsR_JXz8qT14Un5KRtCQ6hF9J_9Nwvpih/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxmkTsArpiM4vtPobItPlSu7ZCr0ZIUSOQKi0DKSbbV0VeLeWzQuYdXyBQojwfp5KMI/exec";
 
 async function cargarDatos() {
   let res; try { res = await robustFetch(API_URL); } catch(e) { res = null; }
